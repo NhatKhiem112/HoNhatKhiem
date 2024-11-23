@@ -1,7 +1,9 @@
-import React from 'react';
-import { View, Text, Button, Image, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Button, Image, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import { Swipeable } from 'react-native-gesture-handler';
+import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 interface Product {
   id: number;
   name: string;
@@ -11,61 +13,161 @@ interface Product {
 }
 
 interface CartProps {
-  cartItems: Product[]; // Ensure this is always passed as an array
+  cartItems: Product[];
   onIncreaseQuantity: (id: number) => void;
   onDecreaseQuantity: (id: number) => void;
   onRemoveFromCart: (id: number) => void;
+  onProceedToCheckout: () => void;
 }
 
 const Cart: React.FC<CartProps> = ({
-  cartItems = [], // Set default value to an empty array
+
+  cartItems = [],
   onIncreaseQuantity,
   onDecreaseQuantity,
   onRemoveFromCart,
+  onProceedToCheckout,
 }) => {
+  const router = useRouter();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+
+  const toggleSelection = (id: number) => {
+    setSelectedItems((prevSelectedItems) =>
+      prevSelectedItems.includes(id)
+        ? prevSelectedItems.filter((itemId) => itemId !== id)
+        : [...prevSelectedItems, id]
+    );
+  };
+  
+
+  const toggleSelectAll = () => {
+    if (selectedItems.length === cartItems.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(cartItems.map((item) => item.id));
+    }
+  };
+
+  const isAllSelected = selectedItems.length === cartItems.length;
+
+  const totalAmount = cartItems
+    .filter((item) => selectedItems.includes(item.id))
+    .reduce((total, item) => total + item.price * item.quantity, 0);
+
+  const handlePayment = (method: string) => {
+    console.log(`Payment method selected: ${method}`);
+    setModalVisible(false);
+  };
+
+  const proceedToPayment = () => {
+    console.log('Selected Items:', selectedItems); // Log selected items
+    if (selectedItems.length === 0) {
+      Alert.alert("Thông báo", "Vui lòng chọn sản phẩm để thanh toán.");
+    } else {
+      setModalVisible(true);
+    }
+  };
+  
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Giỏ hàng</Text>
+      <Text style={styles.header}>Giỏ hàng của tôi</Text>
 
       {cartItems.length === 0 ? (
         <Text style={styles.emptyCart}>Giỏ hàng của bạn đang trống.</Text>
       ) : (
-        cartItems.map((item) => (
-          <View key={item.id} style={styles.cartItem}>
-            <Image
-              source={{ uri: `http://localhost:8000/imgs/products/${item.image}` }}
-              style={styles.productImage}
-            />
-            <View style={styles.productInfo}>
-              <Text style={styles.productName}>{item.name}</Text>
-              <Text style={styles.productPrice}>
-                {(item.price * item.quantity).toLocaleString('vi-VN')} VND
-              </Text>
-            </View>
-
-            <View style={styles.quantityControls}>
-              <Button
-                title="-"
-                onPress={() => onDecreaseQuantity(item.id)}
-                color="#888"
-              />
-              <Text style={styles.quantity}>{item.quantity}</Text>
-              <Button
-                title="+"
-                onPress={() => onIncreaseQuantity(item.id)}
-                color="#888"
-              />
-            </View>
-
+        <>
+          {/* Select All Checkbox */}
+          <View style={styles.selectAllContainer}>
             <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => onRemoveFromCart(item.id)}
+              style={[styles.checkbox, isAllSelected && styles.checkboxSelected]}
+              onPress={toggleSelectAll}
             >
-              <Ionicons name="trash" size={24} color="#ff5c5c" />
+              {isAllSelected && <Ionicons name="checkmark" size={18} color="white" />}
             </TouchableOpacity>
+            <Text style={styles.selectAllText}>Chọn tất cả</Text>
           </View>
-        ))
+
+          {cartItems.map((item) => (
+            <Swipeable
+              key={item.id}
+              renderRightActions={() => (
+                <View style={styles.actionButtonsContainer}>
+                  <TouchableOpacity style={styles.likeButton}>
+                    <Ionicons name="heart" size={24} color="#ff5c5c" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.deleteButton} onPress={() => onRemoveFromCart(item.id)}>
+                    <Ionicons name="trash" size={24} color="#ff5c5c" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            >
+              <View style={styles.cartItem}>
+                {/* Checkbox for selecting item */}
+                <TouchableOpacity
+                  style={[
+                    styles.checkbox,
+                    selectedItems.includes(item.id) && styles.checkboxSelected,
+                  ]}
+                  onPress={() => toggleSelection(item.id)}
+                >
+                  {selectedItems.includes(item.id) && <Ionicons name="checkmark" size={18} color="white" />}
+                </TouchableOpacity>
+
+                <Image
+                  source={{ uri: `http://localhost:8000/imgs/products/${item.image}` }}
+                  style={styles.productImage}
+                />
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName}>{item.name}</Text>
+                  <Text style={styles.productPrice}>
+                    {(item.price * item.quantity).toLocaleString('vi-VN')} VND
+                  </Text>
+                </View>
+
+                <View style={styles.quantityControls}>
+                  <Button
+                    title="-"
+                    onPress={() => onDecreaseQuantity(item.id)}
+                    color="#888"
+                  />
+                  <Text style={styles.quantity}>{item.quantity}</Text>
+                  <Button
+                    title="+"
+                    onPress={() => onIncreaseQuantity(item.id)}
+                    color="#888"
+                  />
+                </View>
+              </View>
+            </Swipeable>
+          ))}
+        </>
       )}
+
+      {cartItems.length > 0 && selectedItems.length > 0 && (
+        <Text style={styles.totalAmount}>Tổng thành tiền: {totalAmount.toLocaleString('vi-VN')} VND</Text>
+      )}
+
+{cartItems.length > 0 && (
+  <TouchableOpacity 
+    style={styles.checkoutButton} 
+    onPress={() => router.push('/CheckoutScreen')}
+  >
+    <Ionicons name="cash" size={20} color="#fff" style={styles.icon} />
+    <Text style={styles.buttonText}>Thanh toán</Text>
+  </TouchableOpacity>
+)}
+
+
+      {/* Payment Options Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        
+      </Modal>
     </ScrollView>
   );
 };
@@ -83,6 +185,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#888',
   },
+  selectAllContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  selectAllText: {
+    fontSize: 16,
+    marginLeft: 8,
+  },
   cartItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -95,6 +206,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 3,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#888',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  checkboxSelected: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   productImage: {
     width: 100,
@@ -123,23 +248,87 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginHorizontal: 8,
   },
-  deleteButton: {
-    backgroundColor: '#2B3044', // Primary button color
-    padding: 10,
-    borderRadius: 7,
-    marginLeft: 16, // Space from quantity controls
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: '100%',
+  },
+  likeButton: {
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
+    width: 70,
+    height: '100%',
+  },
+  deleteButton: {
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 70,
+    height: '100%',
+  },
+  totalAmount: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'right',
+    marginVertical: 10,
+  },
+  checkoutButton: {
+    backgroundColor: '#4CAF50', // Green background
+    paddingVertical: 15, // Increased vertical padding
+    paddingHorizontal: 20, // Increased horizontal padding
+    borderRadius: 30, // Rounded corners
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20, // Space above the button
+    flexDirection: 'row', // Align icon and text horizontally
     shadowColor: '#000',
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 5, // Android shadow
   },
-  deleteButtonText: {
+  buttonText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 10, // Space between icon and text
+  },
+  icon: {
+    marginRight: 5, // Space between icon and text
+  },
+  checkoutButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  paymentOption: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    width: '100%',
+    alignItems: 'center',
+  },
+  paymentText: {
+    fontSize: 16,
   },
 });
 

@@ -14,6 +14,7 @@ import {
   Box,
   Snackbar,
 } from '@mui/material';
+
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SearchIcon from '@mui/icons-material/Search';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
@@ -22,12 +23,11 @@ import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import Cart from '../Cart';
 import ProductDetail from '../ProductDetail';
 import Menu from '../Menu';
-import Promotions from '../Promotions';          // Đường dẫn đến Promotions.tsx
-import PartyServices from '../PartyServices';    // Đường dẫn đến PartyServices.tsx
-import RestaurantSystem from '../RestaurantSystem'; // Đường dẫn đến RestaurantSystem.tsx
 import axios from 'axios'; // Import axios
 import Slider from '../Slider';
-import Footer from '../Footer';
+import CategoryDetail from '../CategoryDetail'; // Import your CategoryDetail component
+import ProductCard from '../ProductCard';
+
 // Sample product data
 export interface Product {
   id: number;
@@ -87,47 +87,14 @@ const Header: React.FC<{ cartItemsCount: number; searchTerm: string; setSearchTe
         </Link>
       </Toolbar>
       <Slider/>
+  
       <Menu />
     </AppBar>
   );
 
 };
 
-// ProductCard component
-const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) => void }> = ({
-  product,
-  onAddToCart,
-}) => {
-  return (
-    <Card style={styles.card}>
-      <CardMedia
-        component="img"
-        image={`http://localhost:8000/imgs/products/${encodeURIComponent(product.image)}`}
-        alt={product.name}
-        style={styles.cardImage}
-      />
 
-      <CardContent style={styles.cardContent}>
-        <Typography variant="h6" style={styles.productName}>
-          {product.name}
-        </Typography>
-        <Typography variant="body1" style={styles.productPrice}>
-          {product.price.toLocaleString('vi-VN')} VND
-        </Typography>
-        <div style={styles.buttonContainer}>
-          <IconButton color="primary" onClick={() => onAddToCart(product)} style={styles.iconButton}>
-            <AddShoppingCartIcon />
-          </IconButton>
-          <Link to={`/product/${product.slug}`} style={{ textDecoration: 'none' }}>
-            <IconButton color="secondary" style={styles.iconButton}>
-              <VisibilityIcon />
-            </IconButton>
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
 
 
 // ProductList component
@@ -142,17 +109,19 @@ const ProductList: React.FC<{ onAddToCart: (product: Product) => void; searchTer
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/san-pham'); // Replace with your API endpoint
-        setProducts(response.data.data); // Assuming response contains data in 'data' field
+        const response = await axios.get('http://localhost:8000/san-pham');
+        console.log(response.data.data); // Log the fetched data
+        setProducts(response.data.data);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching products:', error);
         setLoading(false);
       }
     };
-
+  
     fetchProducts();
   }, []);
+  
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -162,6 +131,8 @@ const ProductList: React.FC<{ onAddToCart: (product: Product) => void; searchTer
     <Box padding={4}>
       {loading ? (
         <p>Loading products...</p>
+      ) : filteredProducts.length === 0 ? (
+        <p>No products found.</p>
       ) : (
         <Grid container spacing={4}>
           {filteredProducts.map((product) => (
@@ -173,6 +144,7 @@ const ProductList: React.FC<{ onAddToCart: (product: Product) => void; searchTer
       )}
     </Box>
   );
+  
 };
 const App: React.FC = () => {
   const [cartItems, setCartItems] = useState<Product[]>([]);
@@ -250,6 +222,8 @@ const App: React.FC = () => {
             path="/product/:slug"
             element={<ProductDetail onAddToCart={handleAddToCart} />}
           />
+           <Route path="/category/:slug" element={<CategoryDetail />} />
+  
           <Route
             path="/Cart"
             element={
@@ -261,9 +235,6 @@ const App: React.FC = () => {
               />
             }
           />
-          <Route path="/promotions" element={<Promotions />} />
-          <Route path="/party-services" element={<PartyServices />} />
-          <Route path="/restaurant-system" element={<RestaurantSystem />} />
         </Routes>
 
         <Snackbar
@@ -272,7 +243,7 @@ const App: React.FC = () => {
           onClose={handleCloseSnackbar}
           message={cartMessage}
         />
-        <Footer />
+      
       </main>
     </Router>
   );
@@ -281,8 +252,10 @@ const App: React.FC = () => {
 
 // Styles similar to React Native StyleSheet
 const styles = {
+  container: { flex: 1, backgroundColor: '#000' },
   title: {
     flexGrow: 1,
+
   },
   searchBar: {
     marginRight: '16px',
@@ -343,12 +316,6 @@ const styles = {
     marginTop: '10px',
     flexGrow: 0,
     marginLeft: '8px',
-  },
-  footer: {
-    backgroundColor: '#333',
-    color: 'white',
-    padding: '20px 0',
-    textAlign: 'center',
   },
   main: {
     flex: '1 0 auto',

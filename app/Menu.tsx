@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -6,20 +6,50 @@ import {
   Menu,
   MenuItem,
   Typography,
+  Box,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 
-// Define menu items and paths
-const menuItems = [
-  { label: 'Thực đơn', path: '/' },
-  { label: 'Khuyến mãi', path: '/promotions' },
-  { label: 'Dịch vụ tiệc', path: '/party-services' },
-  { label: 'Hệ thống nhà hàng', path: '/restaurant-system' },
-];
+// Component for Categories
+const Category: React.FC<{ categories: any[] }> = ({ categories }) => {
+  return (
+    <Box style={{ padding: '10px' }}>
+      <Typography variant="h6" style={{ color: '#ddd', marginBottom: '10px' }}>DANH MỤC</Typography>
+      {categories.map((item) => (
+        <Link key={item.id} to={`/category/${item.slug}`} style={{ textDecoration: 'none', color: '#ddd' }}>
+          <MenuItem style={{ justifyContent: 'space-between' }}>
+            <img
+              src={`http://localhost:8000/imgs/categorys/${item.image}`}
+              alt={item.name}
+              style={{ height: 40, width: 40, borderRadius: 20, marginRight: 10 }}
+            />
+            <Typography variant="body1">{item.name}</Typography>
+          </MenuItem>
+        </Link>
+      ))}
+    </Box>
+  );
+};
 
 const DropdownMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+
+  // Fetch categories when the component mounts
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/admin/category');
+        setCategories(response.data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Open the menu
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -34,7 +64,6 @@ const DropdownMenu: React.FC = () => {
   return (
     <AppBar position="static" style={{ backgroundColor: '#FFFFFF' }}>
       <Toolbar>
-        {/* Change icon color to black */}
         <IconButton color="default" onClick={handleMenuClick}>
           <MenuIcon style={{ color: 'black' }} />
         </IconButton>
@@ -45,30 +74,13 @@ const DropdownMenu: React.FC = () => {
           onClose={handleMenuClose}
           PaperProps={{
             style: {
-              backgroundColor: '#777777', // Dark background for dropdown
-              boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.3)', // Box shadow like the footer
-              borderRadius: '8px', // Rounded corners
+              backgroundColor: '#777777',
+              boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.3)',
+              borderRadius: '8px',
             },
           }}
         >
-          {menuItems.map((item) => (
-            <MenuItem
-              key={item.label}
-              onClick={handleMenuClose}
-              style={{
-                padding: '10px 20px',
-                transition: 'background-color 0.3s',
-                borderBottom: '1px solid #444', // Subtle separator between items
-              }}
-              className="menu-item" // Add a custom class to handle hover effects
-            >
-              <Link to={item.path} style={{ textDecoration: 'none', color: '#ddd' }}>
-                <Typography variant="body1" style={{ color: '#ddd' }}>
-                  {item.label}
-                </Typography>
-              </Link>
-            </MenuItem>
-          ))}
+          <Category categories={categories} />
         </Menu>
       </Toolbar>
     </AppBar>

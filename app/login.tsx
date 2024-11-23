@@ -16,8 +16,8 @@ import { useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Import icon
 
 // Import image assets
-const backgroundImage = require("../../components/imgs/backgroud.jpg");
-const avatarImage = require("../../components/imgs/admin.jpg");
+const backgroundImage = require("../components/imgs/background.jpg");
+const avatarImage = require("../components/imgs/admin.jpg");
 
 export default function LoginScreen() {
   const [username, setUsername] = useState<string>("");
@@ -29,7 +29,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post("http://localhost:8080/api/login", {
+      const response = await axios.post("http://localhost:8000/login", {
         username,
         password,
       });
